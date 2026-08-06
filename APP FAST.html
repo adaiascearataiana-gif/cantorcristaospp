@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotas, Serviços e Despesas</title>
+    <!-- Chart.js para geração dos gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1050px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fcfcfc;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .header-top h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #333;
+        }
+        .btn-backup-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        .abas-container {
+            display: flex;
+            gap: 5px;
+            border-bottom: 2px solid #007bff;
+            margin-bottom: 20px;
+        }
+        .aba-btn {
+            padding: 10px 20px;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            background-color: #e9ecef;
+            color: #495057;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .aba-btn.ativa {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .conteudo-aba {
+            display: none;
+        }
+        .conteudo-aba.ativa {
+            display: block;
+        }
+
+        .campo {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"], input[type="number"], input[type="date"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="date"] {
+            cursor: pointer;
+        }
+
+        .botoes {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-adicionar {
+            flex: 1;
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+        }
+        .btn-adicionar-despesa {
+            flex: 1;
+            background-color: #dc3545;
+            color: white;
+            padding: 10px;
+        }
+        .btn-zerar {
+            flex: 1;
+            background-color: #6c757d;
+            color: white;
+            padding: 10px;
+        }
+        .btn-exportar {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 15px;
+            display: inline-block;
+        }
+        .btn-json {
+            background-color: #17a2b8;
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .btn-editar, .btn-salvar-linha {
+            background-color: #28a745;
+            color: white;
+            margin-right: 5px;
+        }
+        .btn-editar:hover, .btn-salvar-linha:hover {
+            background-color: #218838;
+        }
+        .btn-excluir {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-excluir:hover {
+            background-color: #c82333;
+        }
+
+        .painel-filtros {
+            background-color: #f1f3f5;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        .filtros-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .grupo-botoes-filtro {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-buscar-filtro {
+            background-color: #007bff;
+            color: white;
+            height: 38px;
+        }
+        .btn-limpar-filtro {
+            background-color: #6c757d;
+            color: white;
+            height: 38px;
+        }
+
+        .totalizadores-grid {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .card-total {
+            flex: 1;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #007bff;
+            border-radius: 6px;
+            padding: 10px 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .card-total h4 {
+            margin: 0 0 4px 0;
+            font-size: 11px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        .card-total .valor {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .graficos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .card-grafico {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            max-height: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card-grafico h4 {
+            margin: 0 0 10px 0;
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            align-self: flex-start;
+        }
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 200px;
+        }
+
+        .relatorio-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        .relatorio-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 8px;
+        }
+        .relatorio-header.despesas-header {
+            border-bottom-color: #dc3545;
+        }
+        .relatorio-header h3 {
+            color: #007bff;
+            margin: 0;
+        }
+        .relatorio-header.despesas-header h3 {
+            color: #dc3545;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+            background-color: #fff;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tfoot tr {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .acoes-col {
+            white-space: nowrap;
+            width: 160px;
+            text-align: center;
+        }
+        td input[type="text"], td input[type="date"], td select {
+            padding: 4px;
+            font-size: 13px;
+        }
+
+        /* Status Badges */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+        }
+        .badge-pago { background-color: #28a745; }
+        .badge-pendente { background-color: #ffc107; color: #333; }
+
+        /* Toast Notifications */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 12px;
+            position: fixed;
+            z-index: 1000;
+            right: 20px;
+            bottom: 30px;
+            font-size: 14px;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.3);
+        }
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+
+    <div class="header-top">
+        <h1>Sistema de Gestão Financeira</h1>
+        <div class="btn-backup-container">
+            <button class="btn-json" onclick="exportarBackupJSON()">💾 Salvar Backup (JSON)</button>
+            <button class="btn-json" onclick="document.getElementById('importFileInput').click()">📂 Restaurar Backup</button>
+            <input type="file" id="importFileInput" style="display: none;" accept=".json" onchange="importarBackupJSON(event)">
+        </div>
+    </div>
+
+    <div class="abas-container">
+        <button type="button" class="aba-btn ativa" onclick="alternarAba('servicos', this)">🚚 Serviços e Rotas</button>
+        <button type="button" class="aba-btn" onclick="alternarAba('despesas', this)">💸 Despesas</button>
+        <button type="button" class="aba-btn" onclick="alternarAba('resumo', this)">📈 Resumo Financeiro (DRE)</button>
+    </div>
+
+    <!-- ABA 1: SERVIÇOS E ROTAS -->
+    <div id="aba-servicos" class="conteudo-aba ativa">
+        <form id="formularioServicos" onsubmit="adicionarServico(event)">
+            <h2>🚚 Lançar Serviço / Rota</h2>
+
+            <div class="campo">
+                <label for="cliente">Cliente:</label>
+                <input type="text" id="cliente" placeholder="Nome do cliente" required list="listaClientesConhecidos">
+                <datalist id="listaClientesConhecidos"></datalist>
+            </div>
+
+            <div class="campo">
+                <label for="endereco">Endereço / Rota:</label>
+                <input type="text" id="endereco" placeholder="Endereço de entrega ou serviço" required>
+            </div>
+
+            <div class="campo">
+                <label for="data">Data do Serviço:</label>
+                <input type="date" id="data" required class="travar-data-futura" onclick="abrirCalendario(this)">
+            </div>
+
+            <div class="campo">
+                <label for="qtdMercadorias">Total de Mercadorias Entregues:</label>
+                <input type="text" id="qtdMercadorias" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            </div>
+
+            <div class="campo">
+                <label for="servicoPagamento">Tipo de Pagamento:</label>
+                <select id="servicoPagamento" required>
+                    <option value="">Selecione o tipo...</option>
+                    <option value="PIX">PIX</option>
+                    <option value="DÉBITO">DÉBITO</option>
+                    <option value="À VISTA">À VISTA</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="servicoStatus">Status do Pagamento:</label>
+                <select id="servicoStatus" required>
+                    <option value="Recebido">Recebido</option>
+                    <option value="Pendente">Pendente</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="valor">Valor do Serviço (R$):</label>
+                <input type="text" id="valor" placeholder="0" required oninput="this.value = this.value.replace(/[^0-9.,]/g, '')">
+            </div>
+
+            <div class="campo">
+                <label for="descricao">Descrição do Serviço:</label>
+                <textarea id="descricao" rows="3" placeholder="Detalhes do serviço..."></textarea>
+            </div>
+
+            <div class="botoes">
+                <button type="submit" class="btn-adicionar">Adicionar ao Relatório</button>
+                <button type="button" class="btn-zerar" onclick="limparFormularioServicos()">Limpar Campos</button>
+            </div>
+        </form>
+
+        <div class="totalizadores-grid">
+            <div class="card-total" style="border-left-color: #007bff;">
+                <h4>Viagens Atendidas</h4>
+                <div class="valor" id="cardViagens">0</div>
+            </div>
+            <div class="card-total" style="border-left-color: #17a2b8;">
+                <h4>Mercadorias Entregues</h4>
+                <div class="valor" id="cardMercadorias">0</div>
+            </div>
+            <div class="card-total" style="border-left-color: #28a745;">
+                <h4>Valor Total (Recebido)</h4>
+                <div class="valor">R$ <span id="cardValorTotal">0,00</span></div>
+            </div>
+        </div>
+
+        <div class="relatorio-container">
+            <div class="relatorio-header">
+                <h3>📊 Relatório de Serviços Inseridos</h3>
+                <button type="button" class="btn-exportar" onclick="exportarServicosCSV()">📥 Exportar (.csv)</button>
+            </div>
+
+            <div class="painel-filtros">
+                <div class="filtros-grid">
+                    <div>
+                        <label for="buscaCliente">🔍 Buscar por Cliente:</label>
+                        <input type="text" id="buscaCliente" placeholder="Digite o nome do cliente..." list="listaClientesConhecidos" oninput="aplicarFiltrosServicos()">
+                    </div>
+                    <div>
+                        <label for="filtroDataInicio">Data Inicial:</label>
+                        <input type="date" id="filtroDataInicio" class="travar-data-futura" onclick="abrirCalendario(this)" onchange="atualizarRegraDataFim('filtroDataInicio', 'filtroDataFim'); aplicarFiltrosServicos();">
+                    </div>
+                    <div>
+                        <label for="filtroDataFim">Data Final:</label>
+                        <input type="date" id="filtroDataFim" class="travar-data-futura" onclick="abrirCalendario(this)" onchange="aplicarFiltrosServicos()">
+                    </div>
+                    <div class="grupo-botoes-filtro">
+                        <button type="button" class="btn-buscar-filtro" onclick="aplicarFiltrosServicos()">Buscar</button>
+                        <button type="button" class="btn-limpar-filtro" onclick="limparFiltrosServicos()">Limpar Filtros</button>
+                    </div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Endereço / Rota</th>
+                        <th>Data do Serviço</th>
+                        <th>Qtd. Entregue</th>
+                        <th>Tipo de Pagamento</th>
+                        <th>Status</th>
+                        <th>Valor (R$)</th>
+                        <th>Descrição</th>
+                        <th class="acoes-col">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaServicosCorpo">
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align: right;"><strong>TOTAL EXIBIDO:</strong></td>
+                        <td id="totalQtd">0</td>
+                        <td colspan="2">-</td>
+                        <td>R$ <span id="totalValor">0,00</span></td>
+                        <td>-</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- ABA 2: DESPESAS -->
+    <div id="aba-despesas" class="conteudo-aba">
+        <form id="formularioDespesas" onsubmit="adicionarDespesa(event)">
+            <h2>💸 Lançar Despesa</h2>
+
+            <div class="campo">
+                <label for="despesaNome">Nome do Item ou Serviço:</label>
+                <input type="text" id="despesaNome" placeholder="Ex: Combustível, Manutenção" required list="listaItensDespesas">
+                <datalist id="listaItensDespesas"></datalist>
+            </div>
+
+            <div class="campo">
+                <label for="despesaTipo">Tipo da Despesa:</label>
+                <select id="despesaTipo" required>
+                    <option value="">Selecione o tipo...</option>
+                    <option value="Alimentação">Alimentação</option>
+                    <option value="Combustível">Combustível</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Pedágio">Pedágio</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="despesaData">Data da Despesa:</label>
+                <input type="date" id="despesaData" required class="travar-data-futura" onclick="abrirCalendario(this)">
+            </div>
+
+            <div class="campo">
+                <label for="despesaValor">Valor da Despesa (R$):</label>
+                <input type="text" id="despesaValor" placeholder="0" required oninput="this.value = this.value.replace(/[^0-9.,]/g, '')">
+            </div>
+
+            <div class="campo">
+                <label for="despesaPagamento">Tipo de Pagamento:</label>
+                <select id="despesaPagamento" required>
+                    <option value="">Selecione o tipo...</option>
+                    <option value="PIX">PIX</option>
+                    <option value="DÉBITO">DÉBITO</option>
+                    <option value="À VISTA">À VISTA</option>
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="despesaLocal">Local da Despesa:</label>
+                <input type="text" id="despesaLocal" placeholder="Ex: Posto Ipiranga" required>
+            </div>
+
+            <div class="campo">
+                <label for="despesaObservacao">Observação:</label>
+                <textarea id="despesaObservacao" rows="3" placeholder="Observações adicionais sobre a despesa..."></textarea>
+            </div>
+
+            <div class="botoes">
+                <button type="submit" class="btn-adicionar-despesa">Adicionar Despesa</button>
+                <button type="button" class="btn-zerar" onclick="limparFormularioDespesas()">Limpar Campos</button>
+            </div>
+        </form>
+
+        <div class="totalizadores-grid">
+            <div class="card-total" style="border-left-color: #dc3545;">
+                <h4>Total de Lançamentos</h4>
+                <div class="valor" id="cardQtdDespesas">0</div>
+            </div>
+            <div class="card-total" style="border-left-color: #dc3545;">
+                <h4>Total de Despesas</h4>
+                <div class="valor">R$ <span id="cardValorTotalDespesas">0,00</span></div>
+            </div>
+        </div>
+
+        <div class="graficos-grid">
+            <div class="card-grafico">
+                <h4>Distribuição por Tipo de Despesa</h4>
+                <div class="canvas-wrapper">
+                    <canvas id="graficoTipoDespesa"></canvas>
+                </div>
+            </div>
+            <div class="card-grafico">
+                <h4>Valores por Item</h4>
+                <div class="canvas-wrapper">
+                    <canvas id="graficoItensDespesa"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="relatorio-container">
+            <div class="relatorio-header despesas-header">
+                <h3>📊 Relatório de Despesas</h3>
+                <button type="button" class="btn-exportar" onclick="exportarDespesasCSV()">📥 Exportar (.csv)</button>
+            </div>
+
+            <div class="painel-filtros">
+                <div class="filtros-grid">
+                    <div>
+                        <label for="buscaDespesa">🔍 Buscar por Item / Tipo / Local / Obs:</label>
+                        <input type="text" id="buscaDespesa" placeholder="Digite para filtrar..." list="listaItensDespesas" oninput="aplicarFiltrosDespesas()">
+                    </div>
+                    <div>
+                        <label for="filtroDespesaDataInicio">Data Inicial:</label>
+                        <input type="date" id="filtroDespesaDataInicio" class="travar-data-futura" onclick="abrirCalendario(this)" onchange="atualizarRegraDataFim('filtroDespesaDataInicio', 'filtroDespesaDataFim'); aplicarFiltrosDespesas();">
+                    </div>
+                    <div>
+                        <label for="filtroDespesaDataFim">Data Final:</label>
+                        <input type="date" id="filtroDespesaDataFim" class="travar-data-futura" onclick="abrirCalendario(this)" onchange="aplicarFiltrosDespesas()">
+                    </div>
+                    <div class="grupo-botoes-filtro">
+                        <button type="button" class="btn-buscar-filtro" onclick="aplicarFiltrosDespesas()">Buscar</button>
+                        <button type="button" class="btn-limpar-filtro" onclick="limparFiltrosDespesas()">Limpar Filtros</button>
+                    </div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item / Serviço</th>
+                        <th>Tipo</th>
+                        <th>Data da Despesa</th>
+                        <th>Valor (R$)</th>
+                        <th>Tipo de Pagamento</th>
+                        <th>Local</th>
+                        <th>Observação</th>
+                        <th class="acoes-col">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaDespesasCorpo">
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align: right;"><strong>TOTAL DESPESAS EXIBIDO:</strong></td>
+                        <td>R$ <span id="totalDespesasTabela">0,00</span></td>
+                        <td colspan="3">-</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- ABA 3: RESUMO FINANCEIRO (DRE) -->
+    <div id="aba-resumo" class="conteudo-aba">
+        <h2>📈 Demonstração do Resultado (DRE Simplificada)</h2>
+
+        <div class="totalizadores-grid">
+            <div class="card-total" style="border-left-color: #28a745;">
+                <h4>Receita Bruta Total</h4>
+                <div class="valor" style="color: #28a745;">R$ <span id="dreReceita">0,00</span></div>
+            </div>
+            <div class="card-total" style="border-left-color: #dc3545;">
+                <h4>Despesas Totais</h4>
+                <div class="valor" style="color: #dc3545;">R$ <span id="dreDespesa">0,00</span></div>
+            </div>
+            <div class="card-total" id="cardLucroBorder" style="border-left-color: #007bff;">
+                <h4>Lucro / Prejuízo Líquido</h4>
+                <div class="valor">R$ <span id="dreLucro">0,00</span></div>
+            </div>
+            <div class="card-total" style="border-left-color: #17a2b8;">
+                <h4>Margem de Lucro</h4>
+                <div class="valor"><span id="dreMargem">0</span>%</div>
+            </div>
+        </div>
+
+        <div class="card-grafico" style="max-height: 350px; margin-top: 25px;">
+            <h4>Balanço Financeiro: Receita vs. Despesa</h4>
+            <div class="canvas-wrapper" style="height: 260px;">
+                <canvas id="graficoBalanco"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Component -->
+    <div id="toast">Operação realizada com sucesso!</div>
+
+    <script>
+        var chartTipoInstance = null;
+        var chartItensInstance = null;
+        var chartBalancoInstance = null;
+
+        // DADOS PADRÃO DE SEGURANÇA
+        var servicosIniciais = [
+            { cliente: "Mercado Central", endereco: "Av. Principal, 100", data: "2026-08-01", qtd: 15, pagamento: "PIX", status: "Recebido", valor: 350.00, descricao: "Entrega de caixas de bebidas" },
+            { cliente: "Distribuidora Silva", endereco: "Rua das Flores, 45", data: "2026-08-03", qtd: 8, pagamento: "DÉBITO", status: "Recebido", valor: 200.00, descricao: "Carga leve - material escolar" }
+        ];
+
+        var despesasIniciais = [
+            { nome: "Gasolina Comum", tipo: "Combustível", data: "2026-08-01", valor: 150.00, pagamento: "PIX", local: "Posto Shell", observacao: "Tanque cheio para rota semanal" },
+            { nome: "Almoço Executivo", tipo: "Alimentação", data: "2026-08-02", valor: 35.50, pagamento: "À VISTA", local: "Restaurante Sabor", observacao: "Parada em viagem" }
+        ];
+
+        var dadosServicos = JSON.parse(localStorage.getItem('dados_servicos'));
+        if (!dadosServicos || dadosServicos.length === 0) {
+            dadosServicos = servicosIniciais;
+            localStorage.setItem('dados_servicos', JSON.stringify(dadosServicos));
+        }
+
+        var dadosDespesas = JSON.parse(localStorage.getItem('dados_despesas'));
+        if (!dadosDespesas || dadosDespesas.length === 0) {
+            dadosDespesas = despesasIniciais;
+            localStorage.setItem('dados_despesas', JSON.stringify(dadosDespesas));
+        }
+
+        function salvarDadosServicos() {
+            localStorage.setItem('dados_servicos', JSON.stringify(dadosServicos));
+            atualizarDRE();
+        }
+
+        function salvarDadosDespesas() {
+            localStorage.setItem('dados_despesas', JSON.stringify(dadosDespesas));
+            atualizarDRE();
+            atualizarGraficosDespesas();
+        }
+
+        function mostrarToast(mensagem) {
+            var t = document.getElementById("toast");
+            t.textContent = mensagem;
+            t.className = "show";
+            setTimeout(function(){ t.className = t.className.replace("show", ""); }, 3000);
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            var hoje = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('.travar-data-futura').forEach(function(inputData) {
+                inputData.max = hoje;
+            });
+            inicializarGraficos();
+            carregarTabelaServicos();
+            carregarTabelaDespesas();
+            atualizarDRE();
+        });
+
+        function abrirCalendario(element) {
+            try {
+                if (typeof element.showPicker === 'function') {
+                    element.showPicker();
+                }
+            } catch (e) {}
+        }
+
+        function atualizarRegraDataFim(idInicio, idFim) {
+            var inputInicio = document.getElementById(idInicio);
+            var inputFim = document.getElementById(idFim);
+
+            if (inputInicio.value) {
+                inputFim.min = inputInicio.value;
+                if (inputFim.value && inputFim.value < inputInicio.value) {
+                    inputFim.value = '';
+                }
+            } else {
+                inputFim.removeAttribute('min');
+            }
+        }
+
+        function alternarAba(aba, botao) {
+            document.querySelectorAll('.conteudo-aba').forEach(c => c.classList.remove('ativa'));
+            document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativa'));
+
+            document.getElementById('aba-' + aba).classList.add('ativa');
+            botao.classList.add('ativa');
+
+            if (aba === 'resumo') {
+                atualizarDRE();
+            }
+        }
+
+        function parseNumero(valor) {
+            if (!valor) return 0;
+            var str = valor.toString().trim();
+            if (str.indexOf(',') !== -1) {
+                str = str.replace(/\./g, '').replace(',', '.');
+            }
+            str = str.replace(/[^0-9.]/g, '');
+            return parseFloat(str) || 0;
+        }
+
+        function formatarMoeda(numero) {
+            return numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        /* BACKUP E RESTAURAÇÃO JSON */
+        function exportarBackupJSON() {
+            var dadosGerais = {
+                servicos: dadosServicos,
+                despesas: dadosDespesas,
+                dataExportacao: new Date().toISOString()
+            };
+
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dadosGerais, null, 2));
+            var downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "backup_financeiro_" + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            mostrarToast("Backup exportado com sucesso!");
+        }
+
+        function importarBackupJSON(event) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var importado = JSON.parse(e.target.result);
+                    if (importado.servicos && importado.despesas) {
+                        dadosServicos = importado.servicos;
+                        dadosDespesas = importado.despesas;
+                        salvarDadosServicos();
+                        salvarDadosDespesas();
+                        carregarTabelaServicos();
+                        carregarTabelaDespesas();
+                        mostrarToast("Dados restaurados com sucesso!");
+                    } else {
+                        alert("Arquivo de backup inválido!");
+                    }
+                } catch (err) {
+                    alert("Erro ao ler o arquivo JSON.");
+                }
+            };
+            if(event.target.files[0]) {
+                reader.readAsText(event.target.files[0]);
+            }
+        }
+
+        /* DRE / RESUMO */
+        function atualizarDRE() {
+            var totalReceita = dadosServicos.reduce((acc, s) => acc + (s.status === 'Recebido' ? parseNumero(s.valor) : 0), 0);
+            var totalDespesas = dadosDespesas.reduce((acc, d) => acc + parseNumero(d.valor), 0);
+            var lucro = totalReceita - totalDespesas;
+            var margem = totalReceita > 0 ? ((lucro / totalReceita) * 100).toFixed(1) : 0;
+
+            document.getElementById('dreReceita').textContent = formatarMoeda(totalReceita);
+            document.getElementById('dreDespesa').textContent = formatarMoeda(totalDespesas);
+
+            var elLucro = document.getElementById('dreLucro');
+            var cardLucro = document.getElementById('cardLucroBorder');
+            elLucro.textContent = formatarMoeda(lucro);
+
+            if (lucro >= 0) {
+                elLucro.style.color = '#28a745';
+                cardLucro.style.borderLeftColor = '#28a745';
+            } else {
+                elLucro.style.color = '#dc3545';
+                cardLucro.style.borderLeftColor = '#dc3545';
+            }
+
+            document.getElementById('dreMargem').textContent = margem;
+
+            if (chartBalancoInstance) {
+                chartBalancoInstance.data.datasets[0].data = [totalReceita, totalDespesas, Math.max(0, lucro)];
+                chartBalancoInstance.update();
+            }
+        }
+
+        /* GRÁFICOS */
+        function inicializarGraficos() {
+            var ctxTipo = document.getElementById('graficoTipoDespesa').getContext('2d');
+            chartTipoInstance = new Chart(ctxTipo, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: ['#dc3545', '#ffc107', '#17a2b8', '#28a745', '#6c757d']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            var ctxItens = document.getElementById('graficoItensDespesa').getContext('2d');
+            chartItensInstance = new Chart(ctxItens, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Gasto (R$)',
+                        data: [],
+                        backgroundColor: '#007bff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            var ctxBalanco = document.getElementById('graficoBalanco').getContext('2d');
+            chartBalancoInstance = new Chart(ctxBalanco, {
+                type: 'bar',
+                data: {
+                    labels: ['Receita Total', 'Despesas Totais', 'Lucro Líquido'],
+                    datasets: [{
+                        label: 'Valor (R$)',
+                        data: [0, 0, 0],
+                        backgroundColor: ['#28a745', '#dc3545', '#007bff']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            atualizarGraficosDespesas();
+        }
+
+        function atualizarGraficosDespesas() {
+            if (!chartTipoInstance || !chartItensInstance) return;
+
+            var tipos = {};
+            var itens = {};
+
+            dadosDespesas.forEach(d => {
+                var v = parseNumero(d.valor);
+                tipos[d.tipo] = (tipos[d.tipo] || 0) + v;
+                itens[d.nome] = (itens[d.nome] || 0) + v;
+            });
+
+            chartTipoInstance.data.labels = Object.keys(tipos);
+            chartTipoInstance.data.datasets[0].data = Object.values(tipos);
+            chartTipoInstance.update();
+
+            chartItensInstance.data.labels = Object.keys(itens);
+            chartItensInstance.data.datasets[0].data = Object.values(itens);
+            chartItensInstance.update();
+        }
+
+        /* OPERAÇÕES DE SERVIÇOS */
+        function adicionarServico(e) {
+            e.preventDefault();
+            var novo = {
+                cliente: document.getElementById('cliente').value,
+                endereco: document.getElementById('endereco').value,
+                data: document.getElementById('data').value,
+                qtd: parseNumero(document.getElementById('qtdMercadorias').value),
+                pagamento: document.getElementById('servicoPagamento').value,
+                status: document.getElementById('servicoStatus').value,
+                valor: parseNumero(document.getElementById('valor').value),
+                descricao: document.getElementById('descricao').value
+            };
+
+            dadosServicos.push(novo);
+            salvarDadosServicos();
+            carregarTabelaServicos();
+            limparFormularioServicos();
+            mostrarToast("Serviço adicionado com sucesso!");
+        }
+
+        function limparFormularioServicos() {
+            document.getElementById('formularioServicos').reset();
+        }
+
+        function carregarTabelaServicos(lista) {
+            var dados = lista || dadosServicos;
+            var tbody = document.getElementById('tabelaServicosCorpo');
+            tbody.innerHTML = '';
+
+            var totalQtd = 0;
+            var totalValor = 0;
+            var totalRecebidoCards = 0;
+            var totalQtdCards = 0;
+
+            dadosServicos.forEach(s => {
+                totalQtdCards += parseNumero(s.qtd);
+                if (s.status === 'Recebido') totalRecebidoCards += parseNumero(s.valor);
+            });
+
+            document.getElementById('cardViagens').textContent = dadosServicos.length;
+            document.getElementById('cardMercadorias').textContent = totalQtdCards;
+            document.getElementById('cardValorTotal').textContent = formatarMoeda(totalRecebidoCards);
+
+            // Atualizar Datalist de Clientes
+            var datalist = document.getElementById('listaClientesConhecidos');
+            datalist.innerHTML = '';
+            var clientesUnicos = [...new Set(dadosServicos.map(s => s.cliente))];
+            clientesUnicos.forEach(c => {
+                var opt = document.createElement('option');
+                opt.value = c;
+                datalist.appendChild(opt);
+            });
+
+            dados.forEach((s, idx) => {
+                var vNum = parseNumero(s.valor);
+                var qNum = parseNumero(s.qtd);
+                totalQtd += qNum;
+                totalValor += vNum;
+
+                var tr = document.createElement('tr');
+                var badgeClass = s.status === 'Recebido' ? 'badge-pago' : 'badge-pendente';
+
+                tr.innerHTML = `
+                    <td>${s.cliente}</td>
+                    <td>${s.endereco}</td>
+                    <td>${s.data ? s.data.split('-').reverse().join('/') : ''}</td>
+                    <td>${qNum}</td>
+                    <td>${s.pagamento}</td>
+                    <td><span class="badge ${badgeClass}">${s.status}</span></td>
+                    <td>R$ ${formatarMoeda(vNum)}</td>
+                    <td>${s.descricao || '-'}</td>
+                    <td class="acoes-col">
+                        <button type="button" class="btn-excluir" onclick="excluirServico(${idx})">Excluir</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('totalQtd').textContent = totalQtd;
+            document.getElementById('totalValor').textContent = formatarMoeda(totalValor);
+        }
+
+        function excluirServico(idx) {
+            if (confirm("Deseja realmente excluir este lançamento?")) {
+                dadosServicos.splice(idx, 1);
+                salvarDadosServicos();
+                carregarTabelaServicos();
+                mostrarToast("Lançamento excluído!");
+            }
+        }
+
+        function aplicarFiltrosServicos() {
+            var busca = document.getElementById('buscaCliente').value.toLowerCase();
+            var dtIni = document.getElementById('filtroDataInicio').value;
+            var dtFim = document.getElementById('filtroDataFim').value;
+
+            var filtrados = dadosServicos.filter(s => {
+                var mCliente = s.cliente.toLowerCase().includes(busca);
+                var mData = true;
+                if (dtIni && s.data < dtIni) mData = false;
+                if (dtFim && s.data > dtFim) mData = false;
+                return mCliente && mData;
+            });
+
+            carregarTabelaServicos(filtrados);
+        }
+
+        function limparFiltrosServicos() {
+            document.getElementById('buscaCliente').value = '';
+            document.getElementById('filtroDataInicio').value = '';
+            document.getElementById('filtroDataFim').value = '';
+            document.getElementById('filtroDataFim').removeAttribute('min');
+            carregarTabelaServicos();
+        }
+
+        function exportarServicosCSV() {
+            var csv = "Cliente;Endereco;Data;Qtd;Pagamento;Status;Valor;Descricao\n";
+            dadosServicos.forEach(s => {
+                csv += `"${s.cliente}";"${s.endereco}";"${s.data}";${s.qtd};"${s.pagamento}";"${s.status}";${s.valor};"${s.descricao}"\n`;
+            });
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "servicos.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        /* OPERAÇÕES DE DESPESAS */
+        function adicionarDespesa(e) {
+            e.preventDefault();
+            var nova = {
+                nome: document.getElementById('despesaNome').value,
+                tipo: document.getElementById('despesaTipo').value,
+                data: document.getElementById('despesaData').value,
+                valor: parseNumero(document.getElementById('despesaValor').value),
+                pagamento: document.getElementById('despesaPagamento').value,
+                local: document.getElementById('despesaLocal').value,
+                observacao: document.getElementById('despesaObservacao').value
+            };
+
+            dadosDespesas.push(nova);
+            salvarDadosDespesas();
+            carregarTabelaDespesas();
+            limparFormularioDespesas();
+            mostrarToast("Despesa adicionada com sucesso!");
+        }
+
+        function limparFormularioDespesas() {
+            document.getElementById('formularioDespesas').reset();
+        }
+
+        function carregarTabelaDespesas(lista) {
+            var dados = lista || dadosDespesas;
+            var tbody = document.getElementById('tabelaDespesasCorpo');
+            tbody.innerHTML = '';
+
+            var totalValor = 0;
+            var totalGeralDespesas = dadosDespesas.reduce((acc, d) => acc + parseNumero(d.valor), 0);
+
+            document.getElementById('cardQtdDespesas').textContent = dadosDespesas.length;
+            document.getElementById('cardValorTotalDespesas').textContent = formatarMoeda(totalGeralDespesas);
+
+            // Atualizar Datalist de Itens de Despesas
+            var datalist = document.getElementById('listaItensDespesas');
+            datalist.innerHTML = '';
+            var itensUnicos = [...new Set(dadosDespesas.map(d => d.nome))];
+            itensUnicos.forEach(i => {
+                var opt = document.createElement('option');
+                opt.value = i;
+                datalist.appendChild(opt);
+            });
+
+            dados.forEach((d, idx) => {
+                var vNum = parseNumero(d.valor);
+                totalValor += vNum;
+
+                var tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${d.nome}</td>
+                    <td>${d.tipo}</td>
+                    <td>${d.data ? d.data.split('-').reverse().join('/') : ''}</td>
+                    <td>R$ ${formatarMoeda(vNum)}</td>
+                    <td>${d.pagamento}</td>
+                    <td>${d.local}</td>
+                    <td>${d.observacao || '-'}</td>
+                    <td class="acoes-col">
+                        <button type="button" class="btn-excluir" onclick="excluirDespesa(${idx})">Excluir</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('totalDespesasTabela').textContent = formatarMoeda(totalValor);
+        }
+
+        function excluirDespesa(idx) {
+            if (confirm("Deseja realmente excluir esta despesa?")) {
+                dadosDespesas.splice(idx, 1);
+                salvarDadosDespesas();
+                carregarTabelaDespesas();
+                mostrarToast("Despesa excluída!");
+            }
+        }
+
+        function aplicarFiltrosDespesas() {
+            var busca = document.getElementById('buscaDespesa').value.toLowerCase();
+            var dtIni = document.getElementById('filtroDespesaDataInicio').value;
+            var dtFim = document.getElementById('filtroDespesaDataFim').value;
+
+            var filtrados = dadosDespesas.filter(d => {
+                var mTexto = d.nome.toLowerCase().includes(busca) ||
+                             d.tipo.toLowerCase().includes(busca) ||
+                             d.local.toLowerCase().includes(busca) ||
+                             (d.observacao && d.observacao.toLowerCase().includes(busca));
+                var mData = true;
+                if (dtIni && d.data < dtIni) mData = false;
+                if (dtFim && d.data > dtFim) mData = false;
+                return mTexto && mData;
+            });
+
+            carregarTabelaDespesas(filtrados);
+        }
+
+        function limparFiltrosDespesas() {
+            document.getElementById('buscaDespesa').value = '';
+            document.getElementById('filtroDespesaDataInicio').value = '';
+            document.getElementById('filtroDespesaDataFim').value = '';
+            document.getElementById('filtroDespesaDataFim').removeAttribute('min');
+            carregarTabelaDespesas();
+        }
+
+        function exportarDespesasCSV() {
+            var csv = "Item;Tipo;Data;Valor;Pagamento;Local;Observacao\n";
+            dadosDespesas.forEach(d => {
+                csv += `"${d.nome}";"${d.tipo}";"${d.data}";${d.valor};"${d.pagamento}";"${d.local}";"${d.observacao}"\n`;
+            });
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "despesas.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
