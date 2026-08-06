@@ -6,6 +6,9 @@
     <title>Rotas, Serviços e Despesas</title>
     <!-- Chart.js para geração dos gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SDKs do Firebase (Versão Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -31,6 +34,21 @@
         .btn-backup-container {
             display: flex;
             gap: 8px;
+        }
+
+        .status-nuvem {
+            font-size: 12px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #ffc107;
+            color: #333;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .status-nuvem.online {
+            background-color: #28a745;
+            color: white;
         }
 
         .abas-container {
@@ -124,14 +142,6 @@
             font-size: 12px;
         }
 
-        .btn-editar, .btn-salvar-linha {
-            background-color: #28a745;
-            color: white;
-            margin-right: 5px;
-        }
-        .btn-editar:hover, .btn-salvar-linha:hover {
-            background-color: #218838;
-        }
         .btn-excluir {
             background-color: #dc3545;
             color: white;
@@ -277,15 +287,10 @@
         }
         .acoes-col {
             white-space: nowrap;
-            width: 160px;
+            width: 100px;
             text-align: center;
         }
-        td input[type="text"], td input[type="date"], td select {
-            padding: 4px;
-            font-size: 13px;
-        }
 
-        /* Status Badges */
         .badge {
             padding: 4px 8px;
             border-radius: 4px;
@@ -297,7 +302,6 @@
         .badge-pago { background-color: #28a745; }
         .badge-pendente { background-color: #ffc107; color: #333; }
 
-        /* Toast Notifications */
         #toast {
             visibility: hidden;
             min-width: 250px;
@@ -324,7 +328,10 @@
 <body>
 
     <div class="header-top">
-        <h1>Sistema de Gestão Financeira</h1>
+        <div>
+            <h1>Sistema de Gestão Financeira</h1>
+            <span id="statusNuvem" class="status-nuvem">Conectando ao banco de dados...</span>
+        </div>
         <div class="btn-backup-container">
             <button class="btn-json" onclick="exportarBackupJSON()">💾 Salvar Backup (JSON)</button>
             <button class="btn-json" onclick="document.getElementById('importFileInput').click()">📂 Restaurar Backup</button>
@@ -640,46 +647,64 @@
         </div>
     </div>
 
-    <!-- Toast Component -->
     <div id="toast">Operação realizada com sucesso!</div>
 
     <script>
+        // CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELAS SUAS CHAVES DO CONSOLE DO FIREBASE)
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY_AQUI",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "SEU_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         var chartTipoInstance = null;
         var chartItensInstance = null;
         var chartBalancoInstance = null;
 
-        // DADOS PADRÃO DE SEGURANÇA
-        var servicosIniciais = [
-            { cliente: "Mercado Central", endereco: "Av. Principal, 100", data: "2026-08-01", qtd: 15, pagamento: "PIX", status: "Recebido", valor: 350.00, descricao: "Entrega de caixas de bebidas" },
-            { cliente: "Distribuidora Silva", endereco: "Rua das Flores, 45", data: "2026-08-03", qtd: 8, pagamento: "DÉBITO", status: "Recebido", valor: 200.00, descricao: "Carga leve - material escolar" }
-        ];
+        var dadosServicos = [];
+        var dadosDespesas = [];
 
-        var despesasIniciais = [
-            { nome: "Gasolina Comum", tipo: "Combustível", data: "2026-08-01", valor: 150.00, pagamento: "PIX", local: "Posto Shell", observacao: "Tanque cheio para rota semanal" },
-            { nome: "Almoço Executivo", tipo: "Alimentação", data: "2026-08-02", valor: 35.50, pagamento: "À VISTA", local: "Restaurante Sabor", observacao: "Parada em viagem" }
-        ];
+        // Conexão em Tempo Real com a Nuvem
+        db.ref('.info/connected').on('value', function(snap) {
+            const statusEl = document.getElementById('statusNuvem');
+            if (snap.val() === true) {
+                statusEl.textContent = "🟢 Sincronizado com a Nuvem";
+                statusEl.classList.add('online');
+            } else {
+                statusEl.textContent = "🔴 Desconectado (Modo Offline)";
+                statusEl.classList.remove('online');
+            }
+        });
 
-        var dadosServicos = JSON.parse(localStorage.getItem('dados_servicos'));
-        if (!dadosServicos || dadosServicos.length === 0) {
-            dadosServicos = servicosIniciais;
-            localStorage.setItem('dados_servicos', JSON.stringify(dadosServicos));
-        }
+        // Escutar alterações nos Serviços
+        db.ref('servicos').on('value', function(snapshot) {
+            dadosServicos = snapshot.val() || [];
+            carregarTabelaServicos();
+            atualizarDRE();
+        });
 
-        var dadosDespesas = JSON.parse(localStorage.getItem('dados_despesas'));
-        if (!dadosDespesas || dadosDespesas.length === 0) {
-            dadosDespesas = despesasIniciais;
-            localStorage.setItem('dados_despesas', JSON.stringify(dadosDespesas));
-        }
+        // Escutar alterações nas Despesas
+        db.ref('despesas').on('value', function(snapshot) {
+            dadosDespesas = snapshot.val() || [];
+            carregarTabelaDespesas();
+            atualizarDRE();
+            atualizarGraficosDespesas();
+        });
 
         function salvarDadosServicos() {
-            localStorage.setItem('dados_servicos', JSON.stringify(dadosServicos));
-            atualizarDRE();
+            db.ref('servicos').set(dadosServicos);
         }
 
         function salvarDadosDespesas() {
-            localStorage.setItem('dados_despesas', JSON.stringify(dadosDespesas));
-            atualizarDRE();
-            atualizarGraficosDespesas();
+            db.ref('despesas').set(dadosDespesas);
         }
 
         function mostrarToast(mensagem) {
@@ -695,9 +720,6 @@
                 inputData.max = hoje;
             });
             inicializarGraficos();
-            carregarTabelaServicos();
-            carregarTabelaDespesas();
-            atualizarDRE();
         });
 
         function abrirCalendario(element) {
@@ -776,8 +798,6 @@
                         dadosDespesas = importado.despesas;
                         salvarDadosServicos();
                         salvarDadosDespesas();
-                        carregarTabelaServicos();
-                        carregarTabelaDespesas();
                         mostrarToast("Dados restaurados com sucesso!");
                     } else {
                         alert("Arquivo de backup inválido!");
@@ -833,10 +853,7 @@
                         backgroundColor: ['#dc3545', '#ffc107', '#17a2b8', '#28a745', '#6c757d']
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
 
             var ctxItens = document.getElementById('graficoItensDespesa').getContext('2d');
@@ -917,7 +934,6 @@
 
             dadosServicos.push(novo);
             salvarDadosServicos();
-            carregarTabelaServicos();
             limparFormularioServicos();
             mostrarToast("Serviço adicionado com sucesso!");
         }
@@ -945,7 +961,6 @@
             document.getElementById('cardMercadorias').textContent = totalQtdCards;
             document.getElementById('cardValorTotal').textContent = formatarMoeda(totalRecebidoCards);
 
-            // Atualizar Datalist de Clientes
             var datalist = document.getElementById('listaClientesConhecidos');
             datalist.innerHTML = '';
             var clientesUnicos = [...new Set(dadosServicos.map(s => s.cliente))];
@@ -988,7 +1003,6 @@
             if (confirm("Deseja realmente excluir este lançamento?")) {
                 dadosServicos.splice(idx, 1);
                 salvarDadosServicos();
-                carregarTabelaServicos();
                 mostrarToast("Lançamento excluído!");
             }
         }
@@ -1046,7 +1060,6 @@
 
             dadosDespesas.push(nova);
             salvarDadosDespesas();
-            carregarTabelaDespesas();
             limparFormularioDespesas();
             mostrarToast("Despesa adicionada com sucesso!");
         }
@@ -1066,7 +1079,6 @@
             document.getElementById('cardQtdDespesas').textContent = dadosDespesas.length;
             document.getElementById('cardValorTotalDespesas').textContent = formatarMoeda(totalGeralDespesas);
 
-            // Atualizar Datalist de Itens de Despesas
             var datalist = document.getElementById('listaItensDespesas');
             datalist.innerHTML = '';
             var itensUnicos = [...new Set(dadosDespesas.map(d => d.nome))];
@@ -1103,7 +1115,6 @@
             if (confirm("Deseja realmente excluir esta despesa?")) {
                 dadosDespesas.splice(idx, 1);
                 salvarDadosDespesas();
-                carregarTabelaDespesas();
                 mostrarToast("Despesa excluída!");
             }
         }
