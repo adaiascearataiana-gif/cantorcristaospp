@@ -1,2 +1,0 @@
-# fastservicos
-APP FAST SERVIÇOS
